@@ -6,7 +6,10 @@
     <script type="text/javascript" src="../vendor/jquery.min.js"></script>
     <script type="text/javascript" src="../vendor/raphael.min.js"></script>
     <script type="text/javascript">
+      // there are 762 inefficient things about this program, can you spot them all?
       var paper,
+          shadow_range = 12,
+          shadow_color = 'rgba(33,36,43,1)',
           map_width,
           map_height,
           map,
@@ -19,16 +22,19 @@
       var MainScene = function(){
         var tile_size = 8;
         map = [];
+        // map_width and map_height are the number of tiles horizontally and vertically
         map_width = Math.floor(paper.width / tile_size);
         map_height = Math.floor(paper.height / tile_size);
-        hero = {'x':Math.floor(map_width / 2),'y':Math.floor(map_height / 2)};
-        Background(0,0,paper.width,paper.height,'#B3C69C');
+        // hero keeps track of light source
+        hero = {'x':Math.floor(map_width / 2),'y':Math.floor(map_height / 2),'tile':undefined};
+        // adds the background, a rectangle with a fill
+        Background(0,0,paper.width,paper.height,shadow_color);
         // generate clean map
         var tile;
         for(var y = 0, yl = map_height, x, xl = map_width; y < yl; y += 1){
           map[y] = [];
           for(x = 0; x < xl; x += 1){
-            tile = Tile(x * tile_size,y * tile_size,tile_size,'rgba(33,36,43,1)',true);
+            tile = Tile(x * tile_size,y * tile_size,tile_size,shadow_color,true);
             map[y][x] = tile;
           };
         };
@@ -36,11 +42,12 @@
         for(var q = 0, ql = 40; q < ql; q += 1){
           var x = Math.floor(Math.random() * map_width),
               y = Math.floor(Math.random() * map_height);
-          for(var i = 0, il = 2; i < il; i++){
-            for(var j = 0; j < il; j++){
+          // il and jl control the max possible length of obsticles, min size is 2
+          for(var i = 0, il = Math.floor(Math.random() * 4) + 2, jl = Math.floor(Math.random() * 4) + 2; i < il; i += 1){
+            for(var j = 0; j < jl; j += 1){
               if(y + i < map.length && x + j < map[0].length){
                 tile = map[y + i][x + j];
-                tile.attr('fill','rgba(33,36,43,1)');
+                tile.attr('fill',shadow_color);
                 tile.walkable = false;
               };
             };
@@ -48,13 +55,10 @@
         };
         var move_character = function(e){
           if(e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 40){
-            for(var m = 0; m < map_height; m++){
-              for(var n = 0; n < map_width; n++){
+            for(var m = 0; m < map_height; m += 1){
+              for(var n = 0; n < map_width; n += 1){
                 map[m][n].visible = true;
               };
-            };
-            if(hero.tile !== undefined){
-              hero.tile.attr('fill','rgba(100,109,95,1)');
             };
             if(e.keyCode === 37 && hero.x - 1 > -1 && map[hero.y][hero.x - 1].walkable){
               hero.x -= 1;
@@ -71,44 +75,33 @@
             illuminate(hero.x,hero.y);
             hero.tile = map[hero.y][hero.x];
             hero.tile.toFront();
-            hero.tile.attr('fill','rgba(220,230,194,1');
+            // light source color
+            hero.tile.attr('fill','rgba(220,230,194,1)');
           };
         };
         jQuery(document).keydown(move_character);
+        // fake a keypress to kick off the initial draw
         move_character({'keyCode':40});
       };
+      // colors the entire map based on light source point
       var illuminate = function(center_x,center_y){
         var is_visible,
             tile;
+        // initial pass draws shadows
         for(var y = 0, yl = map.length, x, xl = map[0].length; y < yl; y += 1){
           for(x = 0; x < xl; x += 1){
             is_visible = check_visibility(center_x,center_y,x,y);
             tile = map[y][x];
             if(is_visible){
-              // fancy coloring
-              var rd = 100 - 33,
-                  gd = 109 - 36,
-                  bd = 95 - 43,
-                  rb = 100,
-                  gb = 109,
-                  bb = 95;
-              var dx = center_x - x,
-                  dy = center_y - y,
-                  d = Math.sqrt((dx * dx) + (dy * dy)) / 25,
-                  rn = ~~(rb - (rd * d)),
-                  gn = ~~(gb - (gd * d)),
-                  bn = ~~(bb - (bd * d));
-              if(rn < 33) rn = 33;
-              if(gn < 36) gn = 36;
-              if(bn < 43) bn = 43;
-              tile.attr('fill','rgba(' + [rn,gn,bn,1].join(',') + ')');
+              tile.attr('fill',fancy_coloring(center_x,center_y,x,y,[100,109,95],[33,36,43]));
               tile.visible = true;
             }else{
-              tile.attr('fill','rgba(33,36,43,1)');
+              tile.attr('fill',shadow_color);
               tile.visible = false;
             };
           };
         };
+        // next pass applies shadows to walls/items/etc
         for(var y = 0, yl = map.length, x, xl = map[0].length; y < yl; y += 1){
           for(x = 0; x < xl; x += 1){
             tile = map[y][x];
@@ -116,31 +109,15 @@
             }else{
               var first_visible = check_visibility(center_x,center_y,x,y);
               if(first_visible){
-                // fancy coloring
-                var rd = 57 - 33,
-                    gd = 77 - 36,
-                    bd = 61 - 43,
-                    rb = 57,
-                    gb = 77,
-                    bb = 61;
-                var dx = center_x - x,
-                    dy = center_y - y,
-                    d = Math.sqrt((dx * dx) + (dy * dy)) / 25,
-                    rn = ~~(rb - (rd * d)),
-                    gn = ~~(gb - (gd * d)),
-                    bn = ~~(bb - (bd * d));
-                if(rn < 33) rn = 33;
-                if(gn < 36) gn = 36;
-                if(bn < 43) bn = 43;
-                tile.attr('fill','rgba(' + [rn,gn,bn,1].join(',') + ')');
-                //tile.attr('fill','rgba(57,77,61,1)');
+                tile.attr('fill',fancy_coloring(center_x,center_y,x,y,[57,77,61],[33,36,43]));
               }else{
-                tile.attr('fill','rgba(33,36,43,1)');
+                tile.attr('fill',shadow_color);
               };
             };
           };
         };
       };
+      // I got the idea for this from Bresenham's line algorithm <http://en.wikipedia.org/wiki/Bresenham's_line_algorithm>
       var check_visibility = function(x0,y0,x1,y1){
         var dx = Math.abs(x1 - x0),
             dy = Math.abs(y1 - y0),
@@ -165,6 +142,28 @@
           };
         };
         return true;
+      };
+      // calculates the distance between two points selects a coresponding color
+      var fancy_coloring = function(center_x,center_y,x,y,color_begin,color_end){
+        var rb = color_begin[0],
+            gb = color_begin[1],
+            bb = color_begin[2],
+            re = color_end[0],
+            ge = color_end[1],
+            be = color_end[2],
+            rd = rb - re,
+            gd = gb - ge,
+            bd = bb - be;
+        var dx = center_x - x,
+            dy = center_y - y,
+            d = Math.sqrt((dx * dx) + (dy * dy)) / shadow_range,
+            rn = ~~(rb - (rd * d)),
+            gn = ~~(gb - (gd * d)),
+            bn = ~~(bb - (bd * d));
+        if(rn < re) rn = re;
+        if(gn < ge) gn = ge;
+        if(bn < be) bn = be;
+        return 'rgba(' + [rn,gn,bn,1].join(',') + ')';
       };
       var Tile = function(x,y,size,fill,walkable){
         var rect = paper.rect(x,y,size,size);
