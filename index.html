@@ -18,35 +18,35 @@
       });
       var MainScene = function(){
         var tile_size = 8;
-        hero = {'x':0,'y':0};
         map = [];
         map_width = Math.floor(paper.width / tile_size);
         map_height = Math.floor(paper.height / tile_size);
+        hero = {'x':Math.floor(map_width / 2),'y':Math.floor(map_height / 2)};
         Background(0,0,paper.width,paper.height,'#B3C69C');
         // generate clean map
         var tile;
         for(var y = 0, yl = map_height, x, xl = map_width; y < yl; y += 1){
           map[y] = [];
           for(x = 0; x < xl; x += 1){
-            tile = Tile(x * tile_size,y * tile_size,tile_size,'#333333',true);
+            tile = Tile(x * tile_size,y * tile_size,tile_size,'rgba(33,36,43,1)',true);
             map[y][x] = tile;
           };
         };
         // add some obstacles to map
-        for(var q = 0, ql = 30; q < ql; q += 1){
+        for(var q = 0, ql = 40; q < ql; q += 1){
           var x = Math.floor(Math.random() * map_width),
               y = Math.floor(Math.random() * map_height);
           for(var i = 0, il = 2; i < il; i++){
             for(var j = 0; j < il; j++){
               if(y + i < map.length && x + j < map[0].length){
                 tile = map[y + i][x + j];
-                tile.attr('fill','#333333');
+                tile.attr('fill','rgba(33,36,43,1)');
                 tile.walkable = false;
               };
             };
           };
         };
-        jQuery(document).keydown(function(e){
+        var move_character = function(e){
           if(e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 40){
             for(var m = 0; m < map_height; m++){
               for(var n = 0; n < map_width; n++){
@@ -54,27 +54,28 @@
               };
             };
             if(hero.tile !== undefined){
-              hero.tile.attr('stroke-width',0);
+              hero.tile.attr('fill','rgba(100,109,95,1)');
             };
-            if(e.keyCode === 37 && hero.x - 1 > 0){
+            if(e.keyCode === 37 && hero.x - 1 > -1 && map[hero.y][hero.x - 1].walkable){
               hero.x -= 1;
             };
-            if(e.keyCode === 38 && hero.y - 1 > 0){
+            if(e.keyCode === 38 && hero.y - 1 > -1 && map[hero.y - 1][hero.x].walkable){
               hero.y -= 1;
             };
-            if(e.keyCode === 39 && hero.x + 1 < map_width){
+            if(e.keyCode === 39 && hero.x + 1 < map_width && map[hero.y][hero.x + 1].walkable){
               hero.x += 1;
             };
-            if(e.keyCode === 40 && hero.y + 1 < map_height){
+            if(e.keyCode === 40 && hero.y + 1 < map_height && map[hero.y + 1][hero.x].walkable){
               hero.y += 1;
             };
+            illuminate(hero.x,hero.y);
             hero.tile = map[hero.y][hero.x];
             hero.tile.toFront();
-            hero.tile.attr('stroke-width',3);
-            hero.tile.attr('stroke','#880000');
-            illuminate(hero.x,hero.y);
+            hero.tile.attr('fill','rgba(220,230,194,1');
           };
-        });
+        };
+        jQuery(document).keydown(move_character);
+        move_character({'keyCode':40});
       };
       var illuminate = function(center_x,center_y){
         var is_visible,
@@ -84,20 +85,27 @@
             is_visible = check_visibility(center_x,center_y,x,y);
             tile = map[y][x];
             if(is_visible){
-              tile.attr('fill','#CDABA2');
+              // fancy coloring
+              var rd = 100 - 33,
+                  gd = 109 - 36,
+                  bd = 95 - 43,
+                  rb = 100,
+                  gb = 109,
+                  bb = 95;
+              var dx = center_x - x,
+                  dy = center_y - y,
+                  d = Math.sqrt((dx * dx) + (dy * dy)) / 25,
+                  rn = ~~(rb - (rd * d)),
+                  gn = ~~(gb - (gd * d)),
+                  bn = ~~(bb - (bd * d));
+              if(rn < 33) rn = 33;
+              if(gn < 36) gn = 36;
+              if(bn < 43) bn = 43;
+              tile.attr('fill','rgba(' + [rn,gn,bn,1].join(',') + ')');
               tile.visible = true;
             }else{
-              tile.attr('fill','#333333');
+              tile.attr('fill','rgba(33,36,43,1)');
               tile.visible = false;
-            };
-            if(tile.walkable){
-            }else{
-              var first_visible = check_visibility(center_x,center_y,x,y);
-              if(first_visible){
-                tile.attr('fill','#755A53');
-              }else{
-                tile.attr('fill','#333333');
-              };
             };
           };
         };
@@ -108,9 +116,26 @@
             }else{
               var first_visible = check_visibility(center_x,center_y,x,y);
               if(first_visible){
-                tile.attr('fill','#755A53');
+                // fancy coloring
+                var rd = 57 - 33,
+                    gd = 77 - 36,
+                    bd = 61 - 43,
+                    rb = 57,
+                    gb = 77,
+                    bb = 61;
+                var dx = center_x - x,
+                    dy = center_y - y,
+                    d = Math.sqrt((dx * dx) + (dy * dy)) / 25,
+                    rn = ~~(rb - (rd * d)),
+                    gn = ~~(gb - (gd * d)),
+                    bn = ~~(bb - (bd * d));
+                if(rn < 33) rn = 33;
+                if(gn < 36) gn = 36;
+                if(bn < 43) bn = 43;
+                tile.attr('fill','rgba(' + [rn,gn,bn,1].join(',') + ')');
+                //tile.attr('fill','rgba(57,77,61,1)');
               }else{
-                tile.attr('fill','#333333');
+                tile.attr('fill','rgba(33,36,43,1)');
               };
             };
           };
