@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <title>line of sight test</title>
+    <script type="text/javascript" src="../vendor/jquery.min.js"></script>
+    <script type="text/javascript" src="../vendor/raphael.min.js"></script>
+    <script type="text/javascript">
+      var paper,
+          map_width,
+          map_height,
+          map,
+          hero;
+      jQuery(document).ready(function(){
+        var canvas_elem = jQuery('#canvas');
+        paper = Raphael('canvas',canvas_elem.width(),canvas_elem.height());
+        MainScene();
+      });
+      var MainScene = function(){
+        var tile_size = 8;
+        hero = {'x':0,'y':0};
+        map = [];
+        map_width = Math.floor(paper.width / tile_size);
+        map_height = Math.floor(paper.height / tile_size);
+        Background(0,0,paper.width,paper.height,'#B3C69C');
+        // generate clean map
+        var tile;
+        for(var y = 0, yl = map_height, x, xl = map_width; y < yl; y += 1){
+          map[y] = [];
+          for(x = 0; x < xl; x += 1){
+            tile = Tile(x * tile_size,y * tile_size,tile_size,'#333333',true);
+            map[y][x] = tile;
+          };
+        };
+        // add some obstacles to map
+        for(var q = 0, ql = 30; q < ql; q += 1){
+          var x = Math.floor(Math.random() * map_width),
+              y = Math.floor(Math.random() * map_height);
+          for(var i = 0, il = 2; i < il; i++){
+            for(var j = 0; j < il; j++){
+              if(y + i < map.length && x + j < map[0].length){
+                tile = map[y + i][x + j];
+                tile.attr('fill','#333333');
+                tile.walkable = false;
+              };
+            };
+          };
+        };
+        jQuery(document).keydown(function(e){
+          if(e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 40){
+            for(var m = 0; m < map_height; m++){
+              for(var n = 0; n < map_width; n++){
+                map[m][n].visible = true;
+              };
+            };
+            if(hero.tile !== undefined){
+              hero.tile.attr('stroke-width',0);
+            };
+            if(e.keyCode === 37 && hero.x - 1 > 0){
+              hero.x -= 1;
+            };
+            if(e.keyCode === 38 && hero.y - 1 > 0){
+              hero.y -= 1;
+            };
+            if(e.keyCode === 39 && hero.x + 1 < map_width){
+              hero.x += 1;
+            };
+            if(e.keyCode === 40 && hero.y + 1 < map_height){
+              hero.y += 1;
+            };
+            hero.tile = map[hero.y][hero.x];
+            hero.tile.toFront();
+            hero.tile.attr('stroke-width',3);
+            hero.tile.attr('stroke','#880000');
+            illuminate(hero.x,hero.y);
+          };
+        });
+      };
+      var illuminate = function(center_x,center_y){
+        var is_visible,
+            tile;
+        for(var y = 0, yl = map.length, x, xl = map[0].length; y < yl; y += 1){
+          for(x = 0; x < xl; x += 1){
+            is_visible = check_visibility(center_x,center_y,x,y);
+            tile = map[y][x];
+            if(is_visible){
+              tile.attr('fill','#CDABA2');
+              tile.visible = true;
+            }else{
+              tile.attr('fill','#333333');
+              tile.visible = false;
+            };
+            if(tile.walkable){
+            }else{
+              var first_visible = check_visibility(center_x,center_y,x,y);
+              if(first_visible){
+                tile.attr('fill','#755A53');
+              }else{
+                tile.attr('fill','#333333');
+              };
+            };
+          };
+        };
+        for(var y = 0, yl = map.length, x, xl = map[0].length; y < yl; y += 1){
+          for(x = 0; x < xl; x += 1){
+            tile = map[y][x];
+            if(tile.walkable){
+            }else{
+              var first_visible = check_visibility(center_x,center_y,x,y);
+              if(first_visible){
+                tile.attr('fill','#755A53');
+              }else{
+                tile.attr('fill','#333333');
+              };
+            };
+          };
+        };
+      };
+      var check_visibility = function(x0,y0,x1,y1){
+        var dx = Math.abs(x1 - x0),
+            dy = Math.abs(y1 - y0),
+            sx = x0 < x1 ? 1 : 0 - 1,
+            sy = y0 < y1 ? 1 : 0 - 1,
+            err = dx - dy;
+        while(true){
+          if(x0 === x1 && y0 === y1) break;
+          if(x0 > 0 && x0 < map_width && y0 > 0 && y0 < map_height){
+            if(map[y0][x0].walkable === false || map[y0][x0].visible === false){
+              return false;
+            };
+          };
+          var e2 = 2 * err;
+          if(e2 > 0 - dy){
+            err -= dy;
+            x0 += sx;
+          };
+          if(e2 < dx){
+            err += dx;
+            y0 += sy;
+          };
+        };
+        return true;
+      };
+      var Tile = function(x,y,size,fill,walkable){
+        var rect = paper.rect(x,y,size,size);
+        rect.attr('fill',fill);
+        rect.attr('stroke-width',0);
+        rect.walkable = walkable;
+        rect.visible = true;
+        return rect;
+      };
+      var Background = function(x,y,width,height,fill){
+        var rect = paper.rect(x,y,width,height);
+        rect.attr('fill',fill);
+        rect.attr('stroke-width',0);
+      };
+    </script>
+    <style type="text/css">
+      html,
+      body {
+        background-color:#E1E1E1;
+      }
+      #canvas {
+        width:480px;
+        height:320px;
+        margin:0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas"></div>
+  </body>
+</html>
